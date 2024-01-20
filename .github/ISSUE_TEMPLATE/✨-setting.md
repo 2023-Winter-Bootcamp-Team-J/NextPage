@@ -1,7 +1,7 @@
 ---
-name: "\\U0001F41B bug"
-about: 발생한 오류를 해결합니다.
-title: "[bug] "
+name: "✨ setting"
+about: Docker 및 기타 환경을 수정합니다.
+title: "[setting] "
 labels: ''
 assignees: ''
 
