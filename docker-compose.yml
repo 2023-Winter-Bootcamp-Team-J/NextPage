@@ -1,0 +1,149 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:8.0.11
+    container_name: mysql
+    platform: linux/amd64
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    restart: always
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./backend/nextpage-db/mysql:/usr/src/mysql
+    networks:
+      - npage
+
+
+  neo4j:
+    container_name: neo4j
+    image: neo4j:latest
+    restart: always
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - ./backend/nextpage-db/neo4j/data:/data
+      - ./backend/nextpage-db/neo4j/logs:/logs
+    networks:
+      - npage
+
+
+  rabbitmq:
+    container_name: rabbitmq
+    hostname: nextpage_host
+    image: rabbitmq:3-management
+    command: rabbitmq-server
+    #컨테이너를 stop 시키기 전까지 항상 재시작
+    restart: unless-stopped
+    environment:
+      - CELERY_BROKER_URL=amqp://npage:npage123@rabbitmq:5672/npage_host
+      - RABBITMQ_DEFAULT_USER=npage
+      - RABBITMQ_DEFAULT_PASS=npage123
+      - RABBITMQ_DEFAULT_VHOST=npage_host
+    ports:
+      - 5672:5672    # 이 포트로는 접속 안됨. 나중에 더 알아보고 추가할 예정
+      - 15672:15672  # 이 포트로 접근해서 guest/guest 입력
+    volumes:
+      - ./backend/backend:/var/lib/rabbitmq
+    # 가상 네트워크 연결
+    networks:
+      - npage
+
+
+  celery:
+    container_name: celery
+    platform: linux/amd64
+    build:
+      context: .
+    environment:
+      - CELERY_BROKER_URL=amqp://npage:npage123@rabbitmq:5672/npage_host
+    restart: unless-stopped
+    depends_on:
+      - "rabbitmq"
+    networks:
+      - npage
+    command: [ "celery","-A", "backend", "worker", "--loglevel=info" ]
+    volumes:
+      - ./backend/backend:/backend
+
+  backend:
+    # FIXME: 프로젝트 루트경로기준으로 수정해야함.
+    build:
+      context: .
+      args:
+        DJANGO_ALLOWED_HOSTS: “*”
+        DJANGO_SECRET_KEY: “*”
+        DJANGO_CORS_ORIGIN_WHITELIST: “*”
+    container_name: django
+    # command : 컨테이너가 띄워질 때 실행하는 명령어 / 서버실행
+    command: sh -c "python3 manage.py makemigrations && python3 manage.py migrate && python3 manage.py loaddata init_data.json && python manage.py collectstatic && gunicorn backend.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./backend/backend:/backend
+      - ./backend/logging/:/logging/
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    networks:
+      - npage
+    depends_on:
+      - mysql
+      - neo4j
+
+
+#  nginx:
+#    build:
+#      context: .
+#      dockerfile: ./nginx/dockerfile
+#    ports:
+#      - "80:80"
+#    volumes:
+#      - static_volume:/path/to/static/files
+#      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+#    depends_on:
+#      - backend
+#
+#    networks:
+#      - npage
+#
+  nginx:
+    container_name: nginx
+    restart: on-failure
+    build:
+      dockerfile: Dockerfile
+      context: ./frontend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8081"
+    expose:
+      - "61613"
+    volumes:
+      - ./frontend:/client
+      - ./data/nginx:/etc/nginx/conf.d
+
+    depends_on:
+      - backend
+
+
+
+volumes:
+  nextpage-db:
+  static_volume:
+
+
+networks:
+  npage:
