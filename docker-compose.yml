@@ -132,8 +132,10 @@ services:
     expose:
       - "61613"
     volumes:
-      - ./frontend:/client
-      - ./data/nginx:/etc/nginx/conf.d
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf
+
+    networks:
+      - npage
 
     depends_on:
       - backend
