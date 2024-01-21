@@ -66,7 +66,7 @@ services:
     container_name: celery
     platform: linux/amd64
     build:
-      context: .
+      context: ./backend
     environment:
       - CELERY_BROKER_URL=amqp://npage:npage123@rabbitmq:5672/npage_host
     restart: unless-stopped
@@ -81,7 +81,7 @@ services:
   backend:
     # FIXME: 프로젝트 루트경로기준으로 수정해야함.
     build:
-      context: .
+      context: ./backend
       args:
         DJANGO_ALLOWED_HOSTS: “*”
         DJANGO_SECRET_KEY: “*”
