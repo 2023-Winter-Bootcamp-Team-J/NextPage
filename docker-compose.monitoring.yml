@@ -44,6 +44,7 @@ services:
     volumes:
       - ./backend/logging:/logging
       - ./backend/logging/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./nginx/log:/var/log/nginx # nginx 로그를 호스트와 컨테이너 간에 공유
     networks:
       - npage
     depends_on:
