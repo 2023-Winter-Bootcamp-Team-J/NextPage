@@ -2,7 +2,7 @@ version: '3'
 
 services:
   mysql:
-    image: mysql:8.0.11
+    image: mysql:8.0.11 
     container_name: mysql
     platform: linux/amd64
     environment:
@@ -19,7 +19,10 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     volumes:
-      - ./backend/nextpage-db/mysql:/usr/src/mysql
+      # - ./backend/nextpage-db/mysql:/usr/src/mysql
+      - ./backend/nextpage-db/mysql/data:/var/lib/mysql
+      - ./backend/nextpage-db/mysql/logs:/logs  
+
     networks:
       - npage
 
